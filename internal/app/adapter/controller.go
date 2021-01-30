@@ -27,16 +27,18 @@ func Router() *gin.Engine {
 	// NOTICE: following path is from CURRENT directory, so please run Gin from root directory
 	r.LoadHTMLGlob("internal/app/adapter/view/*")
 	r.GET("/", ctrl.index)
-	r.GET("/projects", ctrl.projects)
-	r.GET("/projects/:id", ctrl.getProjectByID)
-	r.POST("/projects", ctrl.createProject)
-	r.PUT("/projects/:id", ctrl.updateProject)
-	r.DELETE("/projects/:id", ctrl.deleteProject)
+	r.GET("/projects", ctrl.projects)             // fetch all or by user id
+	r.GET("/projects/:id", ctrl.getProjectByID)   // fetch project
+	r.POST("/projects", ctrl.createProject)       // create project
+	r.PUT("/projects/:id", ctrl.updateProject)    // update project
+	r.DELETE("/projects/:id", ctrl.deleteProject) // delete project
 
-	r.GET("/tasks", ctrl.tasks)
-	r.GET("/tasks/:id", ctrl.getTaskByID)
-	r.POST("/tasks/:id/actions", ctrl.taskActions)
-	r.POST("/tasks", ctrl.createTask)
+	r.GET("/tasks", ctrl.tasks)                    // fetch all or by project id
+	r.GET("/tasks/:id", ctrl.getTaskByID)          // fetch task
+	r.POST("/tasks/:id/actions", ctrl.taskActions) // Execute action to task (e.g finish)
+	r.POST("/tasks", ctrl.createTask)              // create task
+	r.PUT("/tasks/:id", ctrl.updateTask)           // update task
+	r.DELETE("/tasks/:id", ctrl.deleteTask)        // delete task
 	return r
 }
 
@@ -91,10 +93,12 @@ func (ctrl Controller) getProjectByID(c *gin.Context) {
 
 	c.JSON(200, proj)
 }
+
 // Binding from JSON
 type ProjectInput struct {
 	Name string `form:"name" json:"name" xml:"name"  binding:"required"`
 }
+
 func (ctrl Controller) createProject(c *gin.Context) {
 	var input ProjectInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -103,7 +107,7 @@ func (ctrl Controller) createProject(c *gin.Context) {
 	}
 	args := usecase.CreateProjectArgs{
 		Name:              input.Name,
-		UserID: 			   1,// TODO: insert here authenticated user 
+		UserID:            1, // TODO: insert here authenticated user
 		ProjectRepository: projectRepository,
 		UserRepository:    userRepository,
 	}
@@ -120,8 +124,8 @@ func (ctrl Controller) createProject(c *gin.Context) {
 			})
 			return
 		}
-	} 
-	
+	}
+
 	c.JSON(200, project)
 }
 
@@ -142,8 +146,8 @@ func (ctrl Controller) updateProject(c *gin.Context) {
 	}
 
 	args := usecase.UpdateProjectArgs{
-		ProjectID: uint(val),
-		Name: input.Name,
+		ProjectID:         uint(val),
+		Name:              input.Name,
 		ProjectRepository: projectRepository,
 	}
 	project, err := usecase.UpdateProject(args) // Dependency Injection
@@ -173,7 +177,20 @@ func (ctrl Controller) deleteProject(c *gin.Context) {
 		return
 	}
 
-	usecase.DeleteProject(projectRepository, uint(val)) // Dependency Injection
+	err = usecase.DeleteProject(projectRepository, uint(val))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Project not found",
+			})
+			return
+		} else {
+			c.AbortWithStatusJSON(500, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+	}
 	c.JSON(204, gin.H{})
 }
 
@@ -274,21 +291,114 @@ func (ctrl Controller) taskActions(c *gin.Context) {
 
 }
 
-func (ctrl Controller) createTask(c *gin.Context) {
-	Name := c.Query("Name")
-	args := usecase.CreateProjectArgs{
-		Name:              Name,
-		ProjectRepository: projectRepository,
-		UserRepository:    userRepository,
-	}
-	project, err := usecase.CreateProject(args) // Dependency Injection
+// Binding from JSON
+type CreateTaskInput struct {
+	Name        string `form:"name" json:"name" xml:"name"  binding:"required"`
+	ProjectID   uint   `form:"project_id" json:"project_id" xml:"project_id"  binding:"required"`
+	Description string `form:"description" json:"description" xml:"description" `
+}
 
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		c.AbortWithStatusJSON(404, gin.H{
-			"message": "Project not found",
+func (ctrl Controller) createTask(c *gin.Context) {
+	var input CreateTaskInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	args := usecase.CreateTaskArgs{
+		Name:              input.Name,
+		ProjectID:         input.ProjectID,
+		Description:       input.Description,
+		ProjectRepository: projectRepository,
+		TaskRepository:    taskRepository,
+	}
+	project, err := usecase.CreateTask(args) // Dependency Injection
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Project not found",
+			})
+			return
+		} else {
+			c.AbortWithStatusJSON(500, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
+	}
+
+	c.JSON(200, project)
+}
+
+// Binding from JSON
+type UpdateTaskInput struct {
+	Name string `form:"name" json:"name" xml:"name"  binding:"required"`
+	Description string `form:"description" json:"description" xml:"description"`
+}
+
+func (ctrl Controller) updateTask(c *gin.Context) {
+	var input UpdateTaskInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	id := c.Param("id")
+	val, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{
+			"message": "Could not parse id",
 		})
 		return
 	}
 
-	c.JSON(200, project)
+	args := usecase.UpdateTaskArgs{
+		TaskID:         uint(val),
+		Name:           input.Name,
+		Description:    input.Description,
+		TaskRepository: taskRepository,
+	}
+	task, err := usecase.UpdateTask(args) // Dependency Injection
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Task not found",
+			})
+			return
+		} else {
+			c.AbortWithStatusJSON(500, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+	c.JSON(200, task)
+}
+
+func (ctrl Controller) deleteTask(c *gin.Context) {
+	id := c.Param("id")
+	val, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.AbortWithStatusJSON(400, gin.H{
+			"message": "Could not parse id",
+		})
+		return
+	}
+
+	err = usecase.DeleteTask(taskRepository, uint(val))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Task not found",
+			})
+			return
+		} else {
+			c.AbortWithStatusJSON(500, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+	c.JSON(204, gin.H{})
 }

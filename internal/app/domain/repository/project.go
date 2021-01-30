@@ -10,5 +10,4 @@ type IProject interface {
 	Create(domain.Project) domain.Project
 	Save(domain.Project) domain.Project
 	Delete(id uint)
-	//Update(domain.Project)
 }

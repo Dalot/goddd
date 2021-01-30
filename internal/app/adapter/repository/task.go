@@ -2,7 +2,6 @@ package repository
 
 import (
 	"errors"
-	"time"
 
 	"github.com/Dalot/goddd/internal/app/adapter/mysql"
 	"github.com/Dalot/goddd/internal/app/domain"
@@ -54,8 +53,8 @@ func (t Task) GetByID(id uint) (domain.Task, error) {
 	return task, nil
 }
 
-// Save saves task
-func (t Task) Save(task domain.Task) domain.Task {
+// Create created task
+func (t Task) Create(task domain.Task) domain.Task {
 	db := mysql.Connection()
 
 	if err := db.Create(&task).Error; err != nil {
@@ -66,15 +65,27 @@ func (t Task) Save(task domain.Task) domain.Task {
 	return task
 }
 
-// Finish finishes task
-func (t Task) Finish(task domain.Task) domain.Task {
+// Save saves task
+func (t Task) Save(task domain.Task) domain.Task {
 	db := mysql.Connection()
-	task.FinishedAt = time.Now().Format("02 January 2006 15:04:05")
-	task.Status = domain.TaskStatusFinished
+
 	if err := db.Save(&task).Error; err != nil {
 		panic(err)
 
 	}
 
 	return task
+}
+
+// Delete deletes task
+func (t Task) Delete(taskID uint) {
+	db := mysql.Connection()
+
+	task := domain.Task{
+		ID: taskID,
+	}
+
+	if err := db.Delete(&task).Error; err != nil {
+		panic(err)
+	}
 }

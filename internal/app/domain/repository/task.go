@@ -7,7 +7,7 @@ type ITask interface {
 	Index() []domain.Task
 	IndexByProjectID(projectID uint) []domain.Task
 	GetByID(id uint) (domain.Task, error)
+	Create(domain.Task) domain.Task
 	Save(domain.Task) domain.Task
-	Finish(domain.Task) domain.Task
-	//Update(domain.Task)
+	Delete(id uint)
 }
