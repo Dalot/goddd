@@ -17,7 +17,7 @@ var (
 
 // Generate generates domain.Task from primitives
 func (of Task) Generate(projectID uint) domain.Task {
-	status := gofakeit.RandString([]string{"new", "finished"})
+	status := gofakeit.RandString([]string{domain.TaskStatusNew, domain.TaskStatusFinished})
 	isFinished := false
 
 	if status == "finished" {
@@ -32,7 +32,7 @@ func (of Task) Generate(projectID uint) domain.Task {
 	}
 
 	if isFinished {
-		task.FinishedAt = time.Now().Format("02-01-2006")
+		task.FinishedAt = time.Now().Format("02 January 2006 15:04:05")
 	}
 
 	return task

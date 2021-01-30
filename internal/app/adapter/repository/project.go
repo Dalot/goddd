@@ -35,7 +35,7 @@ func (p Project) IndexByUserID(userID uint) []domain.Project {
 	return projects
 }
 
-// Index fetches project by ID
+// GetByID fetches project by ID
 func (p Project) GetByID(id uint) (domain.Project, error) {
 	db := mysql.Connection()
 	project := domain.Project{
@@ -53,15 +53,26 @@ func (p Project) GetByID(id uint) (domain.Project, error) {
 	return project, nil
 }
 
-// Save saves project
-func (p Project) Save(project domain.Project) domain.Project {
+// Create Creates project
+func (p Project) Create(project domain.Project) domain.Project {
 	db := mysql.Connection()
 
 	if err := db.Create(&project).Error; err != nil {
 		panic(err)
 
 	}
+	
+	return project
+}
 
+// Create Creates project
+func (p Project) Save(project domain.Project) domain.Project {
+	db := mysql.Connection()
+
+	if err := db.Save(&project).Error; err != nil {
+		panic(err)
+
+	}
 	return project
 }
 

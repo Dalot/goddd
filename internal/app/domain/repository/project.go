@@ -6,8 +6,9 @@ import "github.com/Dalot/goddd/internal/app/domain"
 type IProject interface {
 	Index() []domain.Project
 	IndexByUserID(userId uint) []domain.Project
+	GetByID(id uint) (domain.Project, error)
+	Create(domain.Project) domain.Project
 	Save(domain.Project) domain.Project
 	Delete(id uint)
-	GetByID(id uint) (domain.Project, error)
 	//Update(domain.Project)
 }

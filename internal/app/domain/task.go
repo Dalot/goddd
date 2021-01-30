@@ -2,6 +2,11 @@ package domain
 
 import "time"
 
+const (
+	TaskStatusNew = "new"
+	TaskStatusFinished = "finished"
+)
+
 type Task struct {
 	ID          uint
 	Name        string
