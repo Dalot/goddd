@@ -1,1 +1,1 @@
-Building example project with TDD
+Building example project with DDD
