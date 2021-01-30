@@ -1,10 +1,11 @@
 package domain
 
+import "time"
+
 type Project struct {
-	ID string
-	Name string
-	UserID string
-	CreatedAt string
-	UpdatedAt string
-	DeletedAt string
+	ID        uint
+	Name      string
+	UserID    uint
+	CreatedAt time.Time `json:"createdat" sql:"createdat"`
+	UpdatedAt time.Time `json:"updatedat" sql:"updatedat"`
 }
