@@ -27,28 +27,28 @@ func Router() *gin.Engine {
 	r := gin.Default()
 	ctrl := Controller{}
 
-	r.GET("/", ctrl.index)
+	r.Use(CORS())
+
+	authorized := r.Group("/api")
+	authorized.Use(JWTAuth())
+
+	authorized.GET("/projects", ctrl.projects)             // fetch all or by user id
+	authorized.GET("/projects/:id", ctrl.getProjectByID)   // fetch project
+	authorized.POST("/projects", ctrl.createProject)       // create project
+	authorized.PUT("/projects/:id", ctrl.updateProject)    // update project
+	authorized.DELETE("/projects/:id", ctrl.deleteProject) // delete project
+
+	authorized.GET("/tasks", ctrl.tasks)                    // fetch all or by project id
+	authorized.GET("/tasks/:id", ctrl.getTaskByID)          // fetch task
+	authorized.POST("/tasks/:id/actions", ctrl.taskActions) // Execute action to task (e.g finish)
+	authorized.POST("/tasks", ctrl.createTask)              // create task
+	authorized.PUT("/tasks/:id", ctrl.updateTask)           // update task
+	authorized.DELETE("/tasks/:id", ctrl.deleteTask)        // delete task
+	
+
 	r.POST("/login", ctrl.login)
 	r.POST("/register", ctrl.register)
-	r.GET("/projects", ctrl.projects)             // fetch all or by user id
-	r.GET("/projects/:id", ctrl.getProjectByID)   // fetch project
-	r.POST("/projects", ctrl.createProject)       // create project
-	r.PUT("/projects/:id", ctrl.updateProject)    // update project
-	r.DELETE("/projects/:id", ctrl.deleteProject) // delete project
-
-	r.GET("/tasks", ctrl.tasks)                    // fetch all or by project id
-	r.GET("/tasks/:id", ctrl.getTaskByID)          // fetch task
-	r.POST("/tasks/:id/actions", ctrl.taskActions) // Execute action to task (e.g finish)
-	r.POST("/tasks", ctrl.createTask)              // create task
-	r.PUT("/tasks/:id", ctrl.updateTask)           // update task
-	r.DELETE("/tasks/:id", ctrl.deleteTask)        // delete task
 	return r
-}
-
-func (ctrl Controller) index(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"title": "Hello Code Challenge",
-	})
 }
 
 // TODO: valide the length of the password and maybe other things?
@@ -60,9 +60,9 @@ type LoginInput struct {
 
 func (ctrl Controller) login(c *gin.Context) {
 	var input LoginInput
-	w := c.Writer
+
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -77,22 +77,39 @@ func (ctrl Controller) login(c *gin.Context) {
 		if errors.Is(err, usecase.UserErrCouldNotCreateJWT) {
 			c.AbortWithStatusJSON(500, gin.H{
 				"message": "Something happened",
+				"status":  "error",
 			})
 			return
 		} else if errors.Is(err, usecase.UserErrWrongPassword) {
-			c.AbortWithStatusJSON(422, gin.H{
-				"message": err.Error(),
+			log.Println(err)
+			c.AbortWithStatusJSON(http.StatusOK, gin.H{
+				"message": "The password or the email does not match any account.", // Same error for obscurity purposes
+				"status":  "error",
 			})
 			return
 		} else {
-
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Println(err)
+				c.JSON(http.StatusOK, gin.H{
+					"message": "The password or the email does not match any account.", // Same error for obscurity purposes
+					"status":  "error",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"message": "Something happened.",
+					"status":  "error",
+				})
+				log.Fatal(err)
+				return
+			}
 		}
 	}
-	http.SetCookie(w, cookie)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "authenticated",
+		"message": "Login successful",
 		"token":   cookie.Value,
+		"status":  "ok",
 	})
 }
 
@@ -124,7 +141,7 @@ func (ctrl Controller) register(c *gin.Context) {
 			c.AbortWithStatusJSON(422, gin.H{
 				"message": err.Error(),
 			})
-			return 
+			return
 		} else {
 			panic(err)
 		}

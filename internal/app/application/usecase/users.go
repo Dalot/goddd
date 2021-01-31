@@ -20,7 +20,7 @@ var (
 )
 
 // Create the JWT key used to create the signature
-var jwtKey = []byte("my_secret_key")
+var JwtKey = []byte("my_secret_key")
 
 // Create a struct that will be encoded to a JWT.
 // We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
@@ -75,7 +75,7 @@ func Login(args LoginArgs) (*http.Cookie, error) {
 	// Declare the token with the algorithm used for signing, and the claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Create the JWT string
-	tokenString, err := token.SignedString(jwtKey)
+	tokenString, err := token.SignedString(JwtKey)
 	if err != nil {
 		// If there is an error in creating the JWT return an internal server error
 		log.Fatal(err)

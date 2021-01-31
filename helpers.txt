@@ -6,7 +6,13 @@ docker run --name mysql -e MYSQL_DATABASE=code_challenge -e MYSQL_ROOT_PASSWORD=
 
 docker rm --force mysql
 
-curl -X POST -H "Content-Type: application/json" -d '{"name": "feffewfweOYO", "project_id": 4432423}' "http://localhost:8080/tasks"
+curl -X POST -H "Content-Type: application/json" \
+-H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImJhcnRiZWF0dHlAYmVhaGFuLm9yZyIsImV4cCI6MTYxMjExNTM4OX0.avF0-8bRuv5oqOGbfUNqvJ2MZTeE-nH-g6nDu9EpUqE" \
+-d '{"name": "feffewfweOYO", "project_id": 1}' "http://localhost:8080/api/tasks"
+curl -X POST -H "Content-Type: application/json" -d '{"name": "feffewfweOYO", "project_id": 1}' "http://localhost:8080/tasks"
 curl -X PUT -H "Content-Type: application/json" -d '{"name": "BANANA", "description": "atao meu"}' "http://localhost:8080/tasks/2"
 curl -X DELETE -H "Content-Type: application/json"  "http://localhost:8080/tasks/2"
 curl -X DELETE -H "Content-Type: application/json"  "http://localhost:8080/projects/1"
+
+
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImJhcnRiZWF0dHlAYmVhaGFuLm9yZyIsImV4cCI6MTYxMjExNTM4OX0.avF0-8bRuv5oqOGbfUNqvJ2MZTeE-nH-g6nDu9EpUqE"
