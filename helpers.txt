@@ -1,0 +1,12 @@
+
+go build main.go && ./main.exe 
+
+
+docker run --name mysql -e MYSQL_DATABASE=code_challenge -e MYSQL_ROOT_PASSWORD=secret -p 3306:3306 -d mysql:8.0.22
+
+docker rm --force mysql
+
+curl -X POST -H "Content-Type: application/json" -d '{"name": "feffewfweOYO", "project_id": 4432423}' "http://localhost:8080/tasks"
+curl -X PUT -H "Content-Type: application/json" -d '{"name": "BANANA", "description": "atao meu"}' "http://localhost:8080/tasks/2"
+curl -X DELETE -H "Content-Type: application/json"  "http://localhost:8080/tasks/2"
+curl -X DELETE -H "Content-Type: application/json"  "http://localhost:8080/projects/1"

@@ -24,8 +24,7 @@ type Controller struct{}
 func Router() *gin.Engine {
 	r := gin.Default()
 	ctrl := Controller{}
-	// NOTICE: following path is from CURRENT directory, so please run Gin from root directory
-	r.LoadHTMLGlob("internal/app/adapter/view/*")
+
 	r.GET("/", ctrl.index)
 	r.GET("/projects", ctrl.projects)             // fetch all or by user id
 	r.GET("/projects/:id", ctrl.getProjectByID)   // fetch project
