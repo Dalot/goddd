@@ -18,7 +18,10 @@ var (
 func (of Project) Generate() domain.Project {
 	factoryUser := User{}
 	user := factoryUser.Generate()
-	user = userRepository.Save(user)
+	user, err := userRepository.Create(user)
+	if err != nil {
+		panic(err)
+	}
 
 	project := domain.Project{
 		Name:   gofakeit.Name(),

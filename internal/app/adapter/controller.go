@@ -1,7 +1,9 @@
 package adapter
 
 import (
+	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -26,6 +28,8 @@ func Router() *gin.Engine {
 	ctrl := Controller{}
 
 	r.GET("/", ctrl.index)
+	r.POST("/login", ctrl.login)
+	r.POST("/register", ctrl.register)
 	r.GET("/projects", ctrl.projects)             // fetch all or by user id
 	r.GET("/projects/:id", ctrl.getProjectByID)   // fetch project
 	r.POST("/projects", ctrl.createProject)       // create project
@@ -44,6 +48,95 @@ func Router() *gin.Engine {
 func (ctrl Controller) index(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
 		"title": "Hello Code Challenge",
+	})
+}
+
+// TODO: valide the length of the password and maybe other things?
+// Binding from JSON
+type LoginInput struct {
+	Email    string `form:"email" json:"email" xml:"email"  binding:"required"`
+	Password string `form:"password" json:"password" xml:"password"  binding:"required"`
+}
+
+func (ctrl Controller) login(c *gin.Context) {
+	var input LoginInput
+	w := c.Writer
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	args := usecase.LoginArgs{
+		Email:          input.Email,
+		Password:       input.Password,
+		UserRepository: userRepository,
+	}
+
+	cookie, err := usecase.Login(args)
+	if err != nil {
+		if errors.Is(err, usecase.UserErrCouldNotCreateJWT) {
+			c.AbortWithStatusJSON(500, gin.H{
+				"message": "Something happened",
+			})
+			return
+		} else if errors.Is(err, usecase.UserErrWrongPassword) {
+			c.AbortWithStatusJSON(422, gin.H{
+				"message": err.Error(),
+			})
+			return
+		} else {
+
+		}
+	}
+	http.SetCookie(w, cookie)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "authenticated",
+		"token":   cookie.Value,
+	})
+}
+
+// TODO: valide the length of the password and maybe other things?
+// Binding from JSON
+type RegisterInput struct {
+	Email    string `form:"email" json:"email" xml:"email"  binding:"required"`
+	Password string `form:"password" json:"password" xml:"password"  binding:"required"`
+	Username string `form:"username" json:"username" xml:"username"  binding:"required"`
+}
+
+func (ctrl Controller) register(c *gin.Context) {
+	var input RegisterInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	args := usecase.RegisterArgs{
+		Email:          input.Email,
+		Password:       input.Password,
+		Username:       input.Username,
+		UserRepository: userRepository,
+	}
+
+	user, err := usecase.Register(args)
+	if err != nil {
+		if errors.Is(err, usecase.UserErrAlreadyExists) {
+			c.AbortWithStatusJSON(422, gin.H{
+				"message": err.Error(),
+			})
+			return 
+		} else {
+			panic(err)
+		}
+	}
+	jsonUser, err := json.Marshal(user)
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "authenticated",
+		"user":    string(jsonUser),
 	})
 }
 
@@ -332,7 +425,7 @@ func (ctrl Controller) createTask(c *gin.Context) {
 
 // Binding from JSON
 type UpdateTaskInput struct {
-	Name string `form:"name" json:"name" xml:"name"  binding:"required"`
+	Name        string `form:"name" json:"name" xml:"name"  binding:"required"`
 	Description string `form:"description" json:"description" xml:"description"`
 }
 
