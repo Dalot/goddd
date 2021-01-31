@@ -142,7 +142,7 @@ export default {
       if (this.username.length < 3) {
         this.errors.username = 'Must be at least 3 chars';
       }
-      
+
       if (!this.validEmail(this.email)) {
         this.errors.email = 'Email is not valid';
       }
