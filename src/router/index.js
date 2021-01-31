@@ -3,12 +3,17 @@ import Router from 'vue-router';
 import HelloWorld from '@/components/HelloWorld';
 import Home from '@/components/Home';
 import Login from '@/components/Login';
+import SignUp from '@/components/SignUp';
 
 Vue.use(Router);
 
 const router = new Router({
   mode: 'history',
   routes: [
+    {
+      path: '/',
+      redirect: '/home',
+    },
     {
       path: '/hello',
       name: 'HelloWorld',
@@ -19,7 +24,7 @@ const router = new Router({
     },
     {
       path: '/home',
-      name: 'Home',
+      name: 'home',
       component: Home,
       meta: {
         requiresAuth: true,
@@ -27,8 +32,13 @@ const router = new Router({
     },
     {
       path: '/login',
-      name: 'Login',
+      name: 'login',
       component: Login,
+    },
+    {
+      path: '/signup',
+      name: 'signup',
+      component: SignUp,
     },
   ],
 });

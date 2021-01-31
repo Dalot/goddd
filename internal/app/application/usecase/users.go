@@ -94,18 +94,14 @@ func Login(args LoginArgs) (*http.Cookie, error) {
 func Register(args RegisterArgs) (*domain.User, error) {
 	//TODO: Check what happens here.
 	user, err := args.UserRepository.GetByEmail(args.Email)
-	itAlreadyExists := true
-
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			itAlreadyExists = false
-		} else {
-			return &domain.User{}, err
-		}
+	if user.ID > 0 {
+		return &domain.User{}, UserErrAlreadyExists
 	}
 
-	if itAlreadyExists {
-		return &domain.User{}, UserErrAlreadyExists
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return &domain.User{}, err
+		} 
 	}
 
 	pw, err := user.HashAndSalt([]byte(args.Password))

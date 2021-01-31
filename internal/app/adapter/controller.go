@@ -45,9 +45,9 @@ func Router() *gin.Engine {
 	authorized.PUT("/tasks/:id", ctrl.updateTask)           // update task
 	authorized.DELETE("/tasks/:id", ctrl.deleteTask)        // delete task
 	
-
 	r.POST("/login", ctrl.login)
-	r.POST("/register", ctrl.register)
+	r.POST("/signup", ctrl.signup)
+
 	return r
 }
 
@@ -118,13 +118,22 @@ func (ctrl Controller) login(c *gin.Context) {
 type RegisterInput struct {
 	Email    string `form:"email" json:"email" xml:"email"  binding:"required"`
 	Password string `form:"password" json:"password" xml:"password"  binding:"required"`
+	ConfirmPassword string `form:"confirm_password" json:"confirm_password" xml:"confirm_password"  binding:"required"`
 	Username string `form:"username" json:"username" xml:"username"  binding:"required"`
 }
 
-func (ctrl Controller) register(c *gin.Context) {
+func (ctrl Controller) signup(c *gin.Context) {
 	var input RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if input.Password != input.ConfirmPassword {
+		c.AbortWithStatusJSON(200, gin.H{
+			"message": "Passwords provided do not match",
+			"status": "error",
+		})
 		return
 	}
 
@@ -138,8 +147,9 @@ func (ctrl Controller) register(c *gin.Context) {
 	user, err := usecase.Register(args)
 	if err != nil {
 		if errors.Is(err, usecase.UserErrAlreadyExists) {
-			c.AbortWithStatusJSON(422, gin.H{
+			c.AbortWithStatusJSON(http.StatusOK, gin.H{
 				"message": err.Error(),
+				"status": "error",
 			})
 			return
 		} else {
@@ -153,6 +163,7 @@ func (ctrl Controller) register(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "authenticated",
+		"status":   "ok",
 		"user":    string(jsonUser),
 	})
 }

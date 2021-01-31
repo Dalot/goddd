@@ -49,7 +49,7 @@
             </div>
           </div>
           <div class="middle aligned column">
-            <div class="ui big button">
+            <div class="ui big button" v-on:click="goSignUp">
               <i class="signup icon"></i>
               Sign Up
             </div>
@@ -67,7 +67,6 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      msg: 'Welcome to Your Vue.js App',
       email: '',
       emailError: '',
       passwordError: '',
@@ -126,9 +125,12 @@ export default {
             this.successMessage = data.message;
             this.successShow = true;
             localStorage.setItem('token', data.token);
-            this.$router.push({ name: '/home' });
+            this.$router.push('home');
           }
         });
+    },
+    goSignUp() {
+      this.$router.push('signup');
     },
   },
 };

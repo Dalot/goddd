@@ -78,11 +78,22 @@
         </div>
       </div>
     </div>
+    <div class="ui basic segment">
+      <div class="ui submit button" v-on:click="logout">
+        Logout
+      </div>
+    </div>
   </div>
 </template>
 
 <script type = "text/javascript" >
 export default {
+  methods: {
+    logout() {
+      localStorage.removeItem('token');
+      this.$router.push('login');
+    },
+  },
   data() {
     return {
       projects: [
