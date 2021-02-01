@@ -2,8 +2,6 @@
 
 Please use the default ports since they are hardcoded, :8080 for the go backend app and :8081 for the frontend app. 
 
-Building example project with DDD
-
 ```
 $ git clone https://github.com/Dalot/goddd
 $ cd goddd
