@@ -2,20 +2,18 @@
   <div>
     <div class="ui center aligned basic segment">
       <div class="ui left icon action input">
-        <i class="search icon"></i>
-        <input type="text" placeholder="Project" />
-        <div class="ui blue submit button">Search</div>
-      </div>
-      <div class="ui horizontal divider">Or</div>
-      <div class="ui left icon action input">
         <i class="plus icon"></i>
         <input
           type="text"
           name="new_project_name"
           v-model="new_project_name"
           placeholder="Project"
+          @keydown.enter="createNewProject"
         />
-        <div class="ui positive submit button" v-on:click="createNewProject">
+        <div
+          class="ui positive submit button"
+          v-on:click="createNewProject"
+        >
           Create New Project
         </div>
       </div>
@@ -71,22 +69,24 @@
                   v-for="(task, taskIndex) in project.tasks"
                   v-bind:key="task.id"
                 >
-                     <div
-                      v-show="task.finishedAt.length"
-                      class="ui horizontal label small">
-                      {{ task.finishedAt }}
-                    </div>
-                    <div
-                      class="ui horizontal label small"
-                      v-bind:class="{
-                        blue: isNew(taskIndex, projectIndex, groupIndex),
-                        green: isFinished(taskIndex, projectIndex, groupIndex),
-                      }"
-                    >
-                      {{ task.status }}
-                    </div>
+                  <div
+                    v-show="task.finishedAt.length"
+                    class="ui horizontal label small"
+                  >
+                    {{ task.finishedAt }}
+                  </div>
+                  <div
+                    class="ui horizontal label small"
+                    v-bind:class="{
+                      blue: isNew(taskIndex, projectIndex, groupIndex),
+                      green: isFinished(taskIndex, projectIndex, groupIndex),
+                    }"
+                  >
+                    {{ task.status }}
+                  </div>
                   <div class="description">
-                    <span style="font-size: 1em"
+                    <span
+                      style="font-size: 1em"
                       v-show="!task.edit"
                       :id="'task_name_span_' + task.id"
                       v-on:click.prevent="
@@ -105,12 +105,7 @@
                       v-show="task.edit"
                       :id="'task_name_' + task.id"
                       @keydown.enter="
-                        updateTask(
-                          task.id,
-                          taskIndex,
-                          projectIndex,
-                          groupIndex
-                        )
+                        updateTask(task.id, taskIndex, projectIndex, groupIndex)
                       "
                     />
                     <a
@@ -321,10 +316,17 @@ export default {
               const firstGroupOfProjects = this.projects[0];
               newProject.name = project.Name;
               newProject.id = project.ID;
-              if (firstGroupOfProjects && firstGroupOfProjects.length === 3) {
-                this.projects.unshift([newProject]);
+              newProject.tasks = [];
+              if (firstGroupOfProjects) {
+                // eslint-disable-next-line no-console
+                console.log(firstGroupOfProjects.length);
+                if (firstGroupOfProjects.length === 3) {
+                  this.projects.unshift([newProject]);
+                } else {
+                  firstGroupOfProjects.unshift(newProject);
+                }
               } else {
-                firstGroupOfProjects.unshift(newProject);
+                this.projects.unshift([newProject]);
               }
             }
             this.new_project_name = '';

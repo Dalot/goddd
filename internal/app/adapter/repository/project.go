@@ -27,7 +27,7 @@ func (p Project) Index() []domain.Project {
 func (p Project) IndexByUserID(userID uint) []domain.Project {
 	db := mysql.Connection()
 	var projects []domain.Project
-	if err := db.Where("user_id = ?", userID).Find(&projects).Error; err != nil {
+	if err := db.Where("user_id = ?", userID).Order("created_at desc").Find(&projects).Error; err != nil {
 		panic(err)
 
 	}
