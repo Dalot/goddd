@@ -212,8 +212,10 @@ export default {
           // TODO: Something happened flash message?
           if (response.status === 204) {
             this.projects[groupIndex][projectIndex].tasks.splice(taskIndex, 1);
-          } else if(response.status === 200) {
-             alert(response.data.message);
+          } else if (response.status === 200) {
+            // TODO: remove the alert
+            // eslint-disable-next-line no-alert
+            alert(response.data.message);
           }
         });
     },
@@ -252,10 +254,14 @@ export default {
             if (data.status === 'error') {
               // TODO: Something happened flash message?
               // TODO: Put the old value
+              // TODO: remove the alert
+              // eslint-disable-next-line no-alert
               alert(data.message);
               resolve();
             } else if (data.status === 'ok') {
               resolve();
+            } else {
+              reject();
             }
           });
       });
@@ -404,7 +410,7 @@ export default {
         resolve();
       });
     });
-    const vueContext = this;
+
     Promise.all([projectsDone, tasksDone]).then(() => {
       const aggregateRoot = [];
       const step = 3;
