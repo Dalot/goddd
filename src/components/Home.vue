@@ -10,10 +10,7 @@
           placeholder="Project"
           @keydown.enter="createNewProject"
         />
-        <div
-          class="ui positive submit button"
-          v-on:click="createNewProject"
-        >
+        <div class="ui positive submit button" v-on:click="createNewProject">
           Create New Project
         </div>
       </div>
@@ -110,6 +107,10 @@
                     />
                     <a
                       class="trash icon right floated"
+                      v-show="
+                        projects[groupIndex][projectIndex].tasks[taskIndex]
+                          .status === 'new'
+                      "
                       v-on:click.prevent="
                         deleteTask(task.id, taskIndex, projectIndex, groupIndex)
                       "
@@ -156,6 +157,18 @@
         </div>
       </div>
     </div>
+    <div class="ui success message" v-show="successShow">
+      <i class="close icon"></i>
+      <div class="header">
+        {{ successMessage }}
+      </div>
+    </div>
+    <div class="ui negative message" v-show="errorShow">
+      <i class="close icon"></i>
+      <div class="header">
+        {{ errorMessage }}
+      </div>
+    </div>
     <div class="ui basic segment">
       <div class="ui submit button" v-on:click="logout">Logout</div>
     </div>
@@ -174,6 +187,10 @@ export default {
       },
       new_project_name: '',
       new_task_name: '',
+      errorMessage: '',
+      errorShow: false,
+      successMessage: '',
+      successShow: false,
       isNew: (taskIndex, projectIndex, groupIndex) =>
         this.projects[groupIndex][projectIndex].tasks[taskIndex].status ===
         'new',
@@ -187,6 +204,25 @@ export default {
       localStorage.removeItem('token');
       this.$router.push('login');
     },
+    showSuccessMessage(message) {
+      this.errorMessage = '';
+      this.errorShow = false;
+      this.successMessage = message;
+      this.successShow = true;
+      setTimeout(() => {
+        this.successMessage = '';
+        this.successShow = false;
+      }, 3000);
+    },
+    showErrorMessage(message) {
+      this.successMessage = '';
+      this.successShow = false;
+      this.errorMessage = message;
+      this.errorShow = true;
+      setTimeout(() => {
+        this.errorMessage = '';
+      }, 3000);
+    },
     finishTask(taskId, taskIndex, projectIndex, groupIndex) {
       axios
         .post(`http://localhost:8080/api/tasks/${taskId}/actions`, {
@@ -197,6 +233,9 @@ export default {
           if (data.status === 'ok') {
             this.projects[groupIndex][projectIndex].tasks[taskIndex].status =
               data.data.Status;
+            this.showSuccessMessage('Task finished.');
+          } else {
+            this.showSuccessMessage('Could not finish task.');
           }
         });
     },
@@ -204,13 +243,11 @@ export default {
       axios
         .delete(`http://localhost:8080/api/tasks/${taskId}`)
         .then((response) => {
-          // TODO: Something happened flash message?
           if (response.status === 204) {
             this.projects[groupIndex][projectIndex].tasks.splice(taskIndex, 1);
-          } else if (response.status === 200) {
-            // TODO: remove the alert
-            // eslint-disable-next-line no-alert
-            alert(response.data.message);
+            this.showSuccessMessage('Task deleted successfully.');
+          } else {
+            this.showErrorMessage(response.data.message);
           }
         });
     },
@@ -221,6 +258,9 @@ export default {
           // TODO: Something happened flash message?
           if (response.status === 204) {
             this.projects[groupIndex].splice(projectIndex, 1);
+            this.showSuccessMessage('Project deleted successfully.');
+          } else {
+            this.showErrorMessage(response.data.message);
           }
         });
     },
@@ -247,15 +287,14 @@ export default {
           .then((response) => {
             const data = response.data;
             if (data.status === 'error') {
-              // TODO: Something happened flash message?
               // TODO: Put the old value
-              // TODO: remove the alert
-              // eslint-disable-next-line no-alert
-              alert(data.message);
+              this.showErrorMessage(data.message);
               resolve();
             } else if (data.status === 'ok') {
+              this.showSuccessMessage('Task updated successfully.');
               resolve();
             } else {
+              this.showErrorMessage(data.message);
               reject();
             }
           });
@@ -287,11 +326,12 @@ export default {
           .then((response) => {
             const data = response.data;
             if (data.status === 'error') {
-              // TODO: Something happened flash message?
               // TODO: Put the old value
+              this.showErrorMessage(data.message);
               reject();
             } else if (data.status === 'ok') {
               resolve();
+              this.showSuccessMessage('Project updated.');
             }
           });
       });
@@ -335,10 +375,14 @@ export default {
       });
 
       projectCreated.then(() => {
-        // TODO: add flash message
+        this.showSuccessMessage('Project created successfully.');
       });
     },
     createNewTask(projectId, projectIndex, groupIndex) {
+      if (!this.form.task_name[projectId] || this.form.task_name[projectId].length === 0) {
+        this.showErrorMessage('You must provide a name for the task');
+      }
+
       const taskCreated = new Promise((resolve, reject) => {
         axios
           .post('http://localhost:8080/api/tasks', {
@@ -370,7 +414,7 @@ export default {
       });
 
       taskCreated.then(() => {
-        // TODO: add flash message
+        this.showSuccessMessage('Task created successfully.');
       });
     },
     createDate() {
