@@ -32,6 +32,7 @@ func Router() *gin.Engine {
 	authorized := r.Group("/api")
 	authorized.Use(JWTAuth())
 
+	authorized.GET("", ctrl.index)                         // fetch all or by user id
 	authorized.GET("/projects", ctrl.projects)             // fetch all or by user id
 	authorized.GET("/projects/:id", ctrl.getProjectByID)   // fetch project
 	authorized.POST("/projects", ctrl.createProject)       // create project
@@ -44,15 +45,18 @@ func Router() *gin.Engine {
 	authorized.POST("/tasks", ctrl.createTask)              // create task
 	authorized.PUT("/tasks/:id", ctrl.updateTask)           // update task
 	authorized.DELETE("/tasks/:id", ctrl.deleteTask)        // delete task
-	
+
 	r.POST("/login", ctrl.login)
 	r.POST("/signup", ctrl.signup)
 
 	return r
 }
 
-// TODO: valide the length of the password and maybe other things?
-// Binding from JSON
+func (ctrl Controller) index(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// LoginInput Binding from JSON TODO: valide the length of the password and maybe other things?
 type LoginInput struct {
 	Email    string `form:"email" json:"email" xml:"email"  binding:"required"`
 	Password string `form:"password" json:"password" xml:"password"  binding:"required"`
@@ -95,14 +99,13 @@ func (ctrl Controller) login(c *gin.Context) {
 					"status":  "error",
 				})
 				return
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"message": "Something happened.",
-					"status":  "error",
-				})
-				log.Fatal(err)
-				return
 			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Something happened.",
+				"status":  "error",
+			})
+			log.Fatal(err)
+			return
 		}
 	}
 
@@ -113,13 +116,12 @@ func (ctrl Controller) login(c *gin.Context) {
 	})
 }
 
-// TODO: valide the length of the password and maybe other things?
-// Binding from JSON
+// RegisterInput from JSON TODO: valide the length of the password and maybe other things?
 type RegisterInput struct {
-	Email    string `form:"email" json:"email" xml:"email"  binding:"required"`
-	Password string `form:"password" json:"password" xml:"password"  binding:"required"`
+	Email           string `form:"email" json:"email" xml:"email"  binding:"required"`
+	Password        string `form:"password" json:"password" xml:"password"  binding:"required"`
 	ConfirmPassword string `form:"confirm_password" json:"confirm_password" xml:"confirm_password"  binding:"required"`
-	Username string `form:"username" json:"username" xml:"username"  binding:"required"`
+	Username        string `form:"username" json:"username" xml:"username"  binding:"required"`
 }
 
 func (ctrl Controller) signup(c *gin.Context) {
@@ -132,7 +134,7 @@ func (ctrl Controller) signup(c *gin.Context) {
 	if input.Password != input.ConfirmPassword {
 		c.AbortWithStatusJSON(200, gin.H{
 			"message": "Passwords provided do not match",
-			"status": "error",
+			"status":  "error",
 		})
 		return
 	}
@@ -149,12 +151,11 @@ func (ctrl Controller) signup(c *gin.Context) {
 		if errors.Is(err, usecase.UserErrAlreadyExists) {
 			c.AbortWithStatusJSON(http.StatusOK, gin.H{
 				"message": err.Error(),
-				"status": "error",
+				"status":  "error",
 			})
 			return
-		} else {
-			panic(err)
 		}
+		panic(err)
 	}
 	jsonUser, err := json.Marshal(user)
 	if err != nil {
@@ -163,31 +164,27 @@ func (ctrl Controller) signup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "authenticated",
-		"status":   "ok",
+		"status":  "ok",
 		"user":    string(jsonUser),
 	})
 }
 
 func (ctrl Controller) projects(c *gin.Context) {
-	//TODO: Needs authentication
-	userIDInput := c.Query("user_id")
-	var userID uint
-	if len(userIDInput) > 0 {
-		val, err := strconv.ParseUint(userIDInput, 10, 32)
-		if err != nil {
-			c.AbortWithStatusJSON(400, gin.H{
-				"message": "Could not parse user_id",
-			})
-			return
-		}
 
-		userID = uint(val)
-	} else {
-		userID = 0
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
 	}
 
-	projects := usecase.Projects(projectRepository, userID) // Dependency Injection
-	c.JSON(200, projects)
+	projects := usecase.Projects(projectRepository, user.ID) // Dependency Injection
+	c.JSON(200, gin.H{
+		"data":   projects,
+		"status": "ok",
+	})
 }
 
 func (ctrl Controller) getProjectByID(c *gin.Context) {
@@ -200,7 +197,22 @@ func (ctrl Controller) getProjectByID(c *gin.Context) {
 		return
 	}
 
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
 	proj, err := usecase.GetProjectByID(projectRepository, uint(val))
+
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this project.",
+		})
+		return
+	}
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -214,7 +226,7 @@ func (ctrl Controller) getProjectByID(c *gin.Context) {
 	c.JSON(200, proj)
 }
 
-// Binding from JSON
+// ProjectInput from JSON
 type ProjectInput struct {
 	Name string `form:"name" json:"name" xml:"name"  binding:"required"`
 }
@@ -225,28 +237,27 @@ func (ctrl Controller) createProject(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	user, err := GetAuthUser(c)
+
 	args := usecase.CreateProjectArgs{
 		Name:              input.Name,
-		UserID:            1, // TODO: insert here authenticated user
+		UserID:            user.ID,
 		ProjectRepository: projectRepository,
 		UserRepository:    userRepository,
 	}
 	project, err := usecase.CreateProject(args) // Dependency Injection
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.AbortWithStatusJSON(404, gin.H{
-				"message": "Authenticated user not found", // TODO: When I do have authetnication this will not make sense anymore
-			})
-			return
-		} else {
-			c.AbortWithStatusJSON(500, gin.H{
-				"message": "Something happened",
-			})
-			return
-		}
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": "Something happened",
+			"status": "error",
+		})
+		return
 	}
 
-	c.JSON(200, project)
+	c.JSON(200, gin.H{
+		"data": project,
+		"status": "ok",
+	})
 }
 
 func (ctrl Controller) updateProject(c *gin.Context) {
@@ -265,6 +276,23 @@ func (ctrl Controller) updateProject(c *gin.Context) {
 		return
 	}
 
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
+	proj, err := usecase.GetProjectByID(projectRepository, uint(val))
+
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this project.",
+		})
+		return
+	}
+
 	args := usecase.UpdateProjectArgs{
 		ProjectID:         uint(val),
 		Name:              input.Name,
@@ -277,14 +305,16 @@ func (ctrl Controller) updateProject(c *gin.Context) {
 				"message": "Project not found",
 			})
 			return
-		} else {
-			c.AbortWithStatusJSON(500, gin.H{
-				"message": err.Error(),
-			})
-			return
 		}
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
 	}
-	c.JSON(200, project)
+	c.JSON(200, gin.H{
+		"data": project,
+		"status": "ok",
+	})
 }
 
 func (ctrl Controller) deleteProject(c *gin.Context) {
@@ -297,6 +327,23 @@ func (ctrl Controller) deleteProject(c *gin.Context) {
 		return
 	}
 
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
+	proj, err := usecase.GetProjectByID(projectRepository, uint(val))
+
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this project.",
+		})
+		return
+	}
+
 	err = usecase.DeleteProject(projectRepository, uint(val))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -304,12 +351,13 @@ func (ctrl Controller) deleteProject(c *gin.Context) {
 				"message": "Project not found",
 			})
 			return
-		} else {
-			c.AbortWithStatusJSON(500, gin.H{
-				"message": err.Error(),
-			})
-			return
 		}
+
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
+
 	}
 	c.JSON(204, gin.H{})
 }
@@ -331,8 +379,38 @@ func (ctrl Controller) tasks(c *gin.Context) {
 		projectID = 0
 	}
 
-	tasks := usecase.Tasks(taskRepository, projectID) // Dependency Injection
-	c.JSON(200, tasks)
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
+	if projectID != 0 {
+		proj, _ := usecase.GetProjectByID(projectRepository, projectID)
+
+		if user.ID != proj.UserID {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": "You have no access to this project.",
+			})
+			return
+		}
+		tasks := usecase.Tasks(taskRepository, projectID) // Dependency Injection
+		c.JSON(200, tasks)
+		return
+	}
+	
+	projects := usecase.Projects(projectRepository, user.ID)
+	projectIDs := []uint{}
+	for _, proj := range projects {
+		projectIDs = append(projectIDs, proj.ID)
+	}
+	tasks := usecase.TasksByProjectIDs(taskRepository, projectIDs)
+	c.JSON(200, gin.H{
+		"data":   tasks,
+		"status": "ok",
+	})
 }
 
 func (ctrl Controller) getTaskByID(c *gin.Context) {
@@ -345,8 +423,16 @@ func (ctrl Controller) getTaskByID(c *gin.Context) {
 		return
 	}
 
-	task, err := usecase.GetTaskByID(taskRepository, uint(val))
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
 
+	task, err := usecase.GetTaskByID(taskRepository, uint(val))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.AbortWithStatusJSON(404, gin.H{
@@ -354,6 +440,19 @@ func (ctrl Controller) getTaskByID(c *gin.Context) {
 			})
 			return
 		}
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
+
+	proj, err := usecase.GetProjectByID(projectRepository, task.ProjectID)
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this task.",
+		})
+		return
 	}
 
 	c.JSON(200, task)
@@ -376,6 +475,29 @@ func (ctrl Controller) taskActions(c *gin.Context) {
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Could not parse id",
+		})
+		return
+	}
+	task, err := usecase.GetTaskByID(taskRepository, uint(val))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Task not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
+
+	proj, err := usecase.GetProjectByID(projectRepository, task.ProjectID)
+	user, err := GetAuthUser(c)
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this task.",
 		})
 		return
 	}
@@ -402,7 +524,10 @@ func (ctrl Controller) taskActions(c *gin.Context) {
 			}
 		}
 
-		c.JSON(200, task)
+		c.JSON(200, gin.H{
+			"data": task,
+			"status": "ok",
+		})
 	} else {
 		c.AbortWithStatusJSON(400, gin.H{
 			"message": "There is no such action",
@@ -411,7 +536,7 @@ func (ctrl Controller) taskActions(c *gin.Context) {
 
 }
 
-// Binding from JSON
+// CreateTaskInput from JSON
 type CreateTaskInput struct {
 	Name        string `form:"name" json:"name" xml:"name"  binding:"required"`
 	ProjectID   uint   `form:"project_id" json:"project_id" xml:"project_id"  binding:"required"`
@@ -424,6 +549,29 @@ func (ctrl Controller) createTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	proj, err := usecase.GetProjectByID(projectRepository, input.ProjectID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Project not found",
+			})
+			return
+		}
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	user, err := GetAuthUser(c)
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this project.",
+		})
+		return
+	}
+
 	args := usecase.CreateTaskArgs{
 		Name:              input.Name,
 		ProjectID:         input.ProjectID,
@@ -431,7 +579,7 @@ func (ctrl Controller) createTask(c *gin.Context) {
 		ProjectRepository: projectRepository,
 		TaskRepository:    taskRepository,
 	}
-	project, err := usecase.CreateTask(args) // Dependency Injection
+	task, err := usecase.CreateTask(args) // Dependency Injection
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -439,19 +587,20 @@ func (ctrl Controller) createTask(c *gin.Context) {
 				"message": "Project not found",
 			})
 			return
-		} else {
-			c.AbortWithStatusJSON(500, gin.H{
-				"message": err.Error(),
-			})
-			return
 		}
-
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
 	}
 
-	c.JSON(200, project)
+	c.JSON(200, gin.H{
+		"data":   task,
+		"status": "ok",
+	})
 }
 
-// Binding from JSON
+// UpdateTaskInput Binding from JSON
 type UpdateTaskInput struct {
 	Name        string `form:"name" json:"name" xml:"name"  binding:"required"`
 	Description string `form:"description" json:"description" xml:"description"`
@@ -473,27 +622,59 @@ func (ctrl Controller) updateTask(c *gin.Context) {
 		return
 	}
 
-	args := usecase.UpdateTaskArgs{
-		TaskID:         uint(val),
-		Name:           input.Name,
-		Description:    input.Description,
-		TaskRepository: taskRepository,
-	}
-	task, err := usecase.UpdateTask(args) // Dependency Injection
+	task, err := usecase.GetTaskByID(taskRepository, uint(val))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.AbortWithStatusJSON(404, gin.H{
 				"message": "Task not found",
 			})
 			return
-		} else {
-			c.AbortWithStatusJSON(500, gin.H{
-				"message": err.Error(),
+		}
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
+	proj, err := usecase.GetProjectByID(projectRepository, task.ProjectID)
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this task.",
+		})
+		return
+	}
+
+	args := usecase.UpdateTaskArgs{
+		TaskID:         task.ID,
+		Name:           input.Name,
+		Description:    input.Description,
+		TaskRepository: taskRepository,
+	}
+	task, err = usecase.UpdateTask(args) // Dependency Injection
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Task not found",
 			})
 			return
 		}
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
 	}
-	c.JSON(200, task)
+	c.JSON(200, gin.H{
+		"data": task,
+		"status": "ok",
+	})
 }
 
 func (ctrl Controller) deleteTask(c *gin.Context) {
@@ -506,19 +687,47 @@ func (ctrl Controller) deleteTask(c *gin.Context) {
 		return
 	}
 
-	err = usecase.DeleteTask(taskRepository, uint(val))
+	user, err := GetAuthUser(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusOK, gin.H{
+			"message": err.Error(),
+			"status":  "error",
+		})
+		return
+	}
+	task, err := usecase.GetTaskByID(taskRepository, uint(val))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.AbortWithStatusJSON(404, gin.H{
 				"message": "Task not found",
 			})
 			return
-		} else {
-			c.AbortWithStatusJSON(500, gin.H{
-				"message": err.Error(),
+		}
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
+	}
+	proj, err := usecase.GetProjectByID(projectRepository, task.ProjectID)
+	if user.ID != proj.UserID {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": "You have no access to this task.",
+		})
+		return
+	}
+
+	err = usecase.DeleteTask(taskRepository, task.ID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(404, gin.H{
+				"message": "Task not found",
 			})
 			return
 		}
+		c.AbortWithStatusJSON(500, gin.H{
+			"message": err.Error(),
+		})
+		return
 	}
 	c.JSON(204, gin.H{})
 }

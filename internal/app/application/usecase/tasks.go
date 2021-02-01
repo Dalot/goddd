@@ -37,6 +37,10 @@ func Tasks(taskRepository repository.ITask, projectID uint) []domain.Task {
 	}
 }
 
+func TasksByProjectIDs(taskRepository repository.ITask, projectIDs []uint) []domain.Task {
+	return taskRepository.IndexByProjectIDs(projectIDs)
+}
+
 func GetTaskByID(taskRepository repository.ITask, taskID uint) (domain.Task, error) {
 	task, err := taskRepository.GetByID(taskID)
 	if err != nil {

@@ -12,7 +12,7 @@ func Seed() {
 	projects := projectRepository.Index()
 	for _, project := range projects {
 		factoryTask := Task{}
-		for i := 0; i < 20; i++ {
+		for i := 0; i < 5; i++ {
 			task := factoryTask.Generate(project.ID)
 			taskRepository.Save(task)
 		}

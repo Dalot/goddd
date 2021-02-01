@@ -62,7 +62,7 @@ func Login(args LoginArgs) (*http.Cookie, error) {
 		}
 	}
 
-	expirationTime := time.Now().Add(5 * time.Minute)
+	expirationTime := time.Now().Add(120 * time.Minute)
 	// Create the JWT claims
 	claims := &Claims{
 		Email: args.Email,

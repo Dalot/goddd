@@ -1,3 +1,4 @@
+import axios from 'axios';
 import Vue from 'vue';
 import Router from 'vue-router';
 import HelloWorld from '@/components/HelloWorld';
@@ -51,7 +52,28 @@ router.beforeEach((to, from, next) => {
         params: { nextUrl: to.fullPath },
       });
     } else {
-      next();
+      const token = localStorage.getItem('token');
+      axios
+      .get('http://localhost:8080/api', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((response) => {
+          console.log('ola');
+          const data = response.data;
+
+          if (data.status === 'error') {
+            console.error('response:', response);
+            console.error('UNAUTHORIZED');
+            next({
+              path: '/login',
+              params: { nextUrl: to.fullPath },
+            });
+          } else if (data.status === 'ok') {
+            next();
+          }
+        });
     }
   } else {
     next();

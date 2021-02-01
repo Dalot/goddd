@@ -188,7 +188,6 @@ export default {
         })
         .then((response) => {
           const data = response.data;
-          console.log(response, data);
           if (data.status === 'error') {
             this.signUpFailed = true;
             this.generalErrorMsg = data.message;

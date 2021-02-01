@@ -35,6 +35,18 @@ func (t Task) IndexByProjectID(projectID uint) []domain.Task {
 	return tasks
 }
 
+// IndexByProjectIDs fetches all tasks for all requestes projects
+func (t Task) IndexByProjectIDs(projectIDs []uint) []domain.Task {
+	db := mysql.Connection()
+	var tasks []domain.Task
+	if err := db.Where("project_id IN ?", projectIDs).Find(&tasks).Error; err != nil {
+		panic(err)
+
+	}
+
+	return tasks
+}
+
 // GetByID fetches task by ID
 func (t Task) GetByID(id uint) (domain.Task, error) {
 	db := mysql.Connection()

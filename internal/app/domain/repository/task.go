@@ -6,6 +6,7 @@ import "github.com/Dalot/goddd/internal/app/domain"
 type ITask interface {
 	Index() []domain.Task
 	IndexByProjectID(projectID uint) []domain.Task
+	IndexByProjectIDs(projectIDs []uint) []domain.Task
 	GetByID(id uint) (domain.Task, error)
 	Create(domain.Task) domain.Task
 	Save(domain.Task) domain.Task

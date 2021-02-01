@@ -19,7 +19,6 @@ new Vue({
 axios.interceptors.request.use((config) => {
   const newConfig = config;
   const token = localStorage.getItem('token');
-  newConfig.headers.Authorization = token;
-  console.log('axios new config: ', newConfig);
+  newConfig.headers.Authorization = `Bearer ${token}`;
   return newConfig;
 });
