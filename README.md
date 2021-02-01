@@ -35,3 +35,5 @@ Your application is running here: http://localhost:8081
 ```
 
 You can pick up any user you want, fetch any email, login with pw `123123123` or just register a dummy user...
+
+You can also look for the `helpers.txt` file, it has some curl examples(did not have the time to build a postman collection).
