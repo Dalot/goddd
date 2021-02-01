@@ -666,6 +666,13 @@ func (ctrl Controller) updateTask(c *gin.Context) {
 			})
 			return
 		}
+		if errors.Is(err, usecase.TaskErrCannotBeUpdated) {
+			c.AbortWithStatusJSON(200, gin.H{
+				"message": err.Error(),
+				"status": "error",
+			})
+			return
+		}
 		c.AbortWithStatusJSON(500, gin.H{
 			"message": err.Error(),
 		})
@@ -721,6 +728,13 @@ func (ctrl Controller) deleteTask(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.AbortWithStatusJSON(404, gin.H{
 				"message": "Task not found",
+			})
+			return
+		}
+		if errors.Is(err, usecase.TaskErrCannotBeDeleted) {
+			c.AbortWithStatusJSON(200, gin.H{
+				"message": err.Error(),
+				"status": "error",
 			})
 			return
 		}

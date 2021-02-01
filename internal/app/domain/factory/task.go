@@ -32,7 +32,7 @@ func (of Task) Generate(projectID uint) domain.Task {
 	}
 
 	if isFinished {
-		task.FinishedAt = time.Now().Format("02 January 2006 15:04:05")
+		task.FinishedAt = time.Now().Format("02-Jan-2006")
 	}
 
 	return task

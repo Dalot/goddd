@@ -30,7 +30,7 @@
         v-for="(project, projectIndex) in projectsGroup"
         v-bind:key="project.ID"
       >
-        <div class="ui centered card">
+        <div class="ui centered card fluid">
           <div class="content">
             <div class="header">
               <span
@@ -52,7 +52,7 @@
                 v-show="project.edit"
                 :id="'project_name_' + project.id"
                 @keydown.enter="
-                  saveProjectEdit($event, project.id, projectIndex, groupIndex)
+                  updateProject($event, project.id, projectIndex, groupIndex)
                 "
               />
               <a
@@ -71,20 +71,22 @@
                   v-for="(task, taskIndex) in project.tasks"
                   v-bind:key="task.id"
                 >
-                  <div class="description">
-                    <div class="ui left floated compact">
-                      <div class="ui fitted checkbox">
-                        <input type="checkbox" />
-                        <label></label>
-                      </div>
+                     <div
+                      v-show="task.finishedAt.length"
+                      class="ui horizontal label small">
+                      {{ task.finishedAt }}
                     </div>
                     <div
                       class="ui horizontal label small"
-                      v-bind:class="{ 'blue': isNew(taskIndex, projectIndex, groupIndex), 'green': isFinished(taskIndex, projectIndex, groupIndex)}"
+                      v-bind:class="{
+                        blue: isNew(taskIndex, projectIndex, groupIndex),
+                        green: isFinished(taskIndex, projectIndex, groupIndex),
+                      }"
                     >
                       {{ task.status }}
                     </div>
-                    <span
+                  <div class="description">
+                    <span style="font-size: 1em"
                       v-show="!task.edit"
                       :id="'task_name_span_' + task.id"
                       v-on:click.prevent="
@@ -103,7 +105,7 @@
                       v-show="task.edit"
                       :id="'task_name_' + task.id"
                       @keydown.enter="
-                        saveTaskEdit(
+                        updateTask(
                           task.id,
                           taskIndex,
                           projectIndex,
@@ -166,7 +168,7 @@
 </template>
 
 <script type = "text/javascript" >
-import axios from "axios";
+import axios from 'axios';
 
 export default {
   data() {
@@ -175,30 +177,29 @@ export default {
       form: {
         task_name: [],
       },
-      new_project_name: "",
-      new_task_name: "",
+      new_project_name: '',
+      new_task_name: '',
       isNew: (taskIndex, projectIndex, groupIndex) =>
         this.projects[groupIndex][projectIndex].tasks[taskIndex].status ===
-        "new",
+        'new',
       isFinished: (taskIndex, projectIndex, groupIndex) =>
         this.projects[groupIndex][projectIndex].tasks[taskIndex].status ===
-        "finished",
+        'finished',
     };
   },
   methods: {
     logout() {
-      localStorage.removeItem("token");
-      this.$router.push("login");
+      localStorage.removeItem('token');
+      this.$router.push('login');
     },
     finishTask(taskId, taskIndex, projectIndex, groupIndex) {
       axios
         .post(`http://localhost:8080/api/tasks/${taskId}/actions`, {
-          type: "finish",
+          type: 'finish',
         })
         .then((response) => {
           const data = response.data;
-          if (data.status === "ok") {
-            console.log(response.data.data);
+          if (data.status === 'ok') {
             this.projects[groupIndex][projectIndex].tasks[taskIndex].status =
               data.data.Status;
           }
@@ -209,9 +210,10 @@ export default {
         .delete(`http://localhost:8080/api/tasks/${taskId}`)
         .then((response) => {
           // TODO: Something happened flash message?
-          console.log(response);
           if (response.status === 204) {
             this.projects[groupIndex][projectIndex].tasks.splice(taskIndex, 1);
+          } else if(response.status === 200) {
+             alert(response.data.message);
           }
         });
     },
@@ -220,7 +222,6 @@ export default {
         .delete(`http://localhost:8080/api/projects/${projectId}`)
         .then((response) => {
           // TODO: Something happened flash message?
-          console.log(response);
           if (response.status === 204) {
             this.projects[groupIndex].splice(projectIndex, 1);
           }
@@ -229,8 +230,8 @@ export default {
     toggleTaskEdit(taskId, taskIndex, projectIndex, groupIndex) {
       const input = document.getElementById(`task_name_${taskId}`);
       const span = document.getElementById(`task_name_span_${taskId}`);
-      input.style.display = input.style.display === "" ? "none" : "";
-      span.style.display = span.style.display === "none" ? "" : "none";
+      input.style.display = input.style.display === '' ? 'none' : '';
+      span.style.display = span.style.display === 'none' ? '' : 'none';
       // Focus input field
       if (this.projects[groupIndex][projectIndex].tasks[taskIndex].edit) {
         this.$nextTick(() => {
@@ -238,7 +239,7 @@ export default {
         });
       }
     },
-    saveTaskEdit(taskId, taskIndex, projectIndex, groupIndex) {
+    updateTask(taskId, taskIndex, projectIndex, groupIndex) {
       // save your changes
       const taskUpdated = new Promise((resolve, reject) => {
         const task = this.projects[groupIndex][projectIndex].tasks[taskIndex];
@@ -248,11 +249,12 @@ export default {
           })
           .then((response) => {
             const data = response.data;
-            if (data.status === "error") {
+            if (data.status === 'error') {
               // TODO: Something happened flash message?
               // TODO: Put the old value
-              reject();
-            } else if (data.status === "ok") {
+              alert(data.message);
+              resolve();
+            } else if (data.status === 'ok') {
               resolve();
             }
           });
@@ -264,8 +266,8 @@ export default {
     toggleProjectEdit(ev, projectId, projectIndex, groupIndex) {
       const input = document.getElementById(`project_name_${projectId}`);
       const span = document.getElementById(`project_name_span_${projectId}`);
-      input.style.display = input.style.display === "" ? "none" : "";
-      span.style.display = span.style.display === "none" ? "" : "none";
+      input.style.display = input.style.display === '' ? 'none' : '';
+      span.style.display = span.style.display === 'none' ? '' : 'none';
       // Focus input field
       if (this.projects[groupIndex][projectIndex].edit) {
         this.$nextTick(() => {
@@ -273,7 +275,7 @@ export default {
         });
       }
     },
-    saveProjectEdit(ev, projectId, projectIndex, groupIndex) {
+    updateProject(ev, projectId, projectIndex, groupIndex) {
       // save your changes
       const projectUpdated = new Promise((resolve, reject) => {
         const project = this.projects[groupIndex][projectIndex];
@@ -283,11 +285,11 @@ export default {
           })
           .then((response) => {
             const data = response.data;
-            if (data.status === "error") {
+            if (data.status === 'error') {
               // TODO: Something happened flash message?
               // TODO: Put the old value
               reject();
-            } else if (data.status === "ok") {
+            } else if (data.status === 'ok') {
               resolve();
             }
           });
@@ -299,15 +301,15 @@ export default {
     createNewProject() {
       const projectCreated = new Promise((resolve, reject) => {
         axios
-          .post("http://localhost:8080/api/projects", {
+          .post('http://localhost:8080/api/projects', {
             name: this.new_project_name,
           })
           .then((response) => {
             const data = response.data;
-            if (data.status === "error") {
+            if (data.status === 'error') {
               // TODO: Something happened flash message?
               reject();
-            } else if (data.status === "ok") {
+            } else if (data.status === 'ok') {
               const project = data.data;
               const newProject = {};
               const firstGroupOfProjects = this.projects[0];
@@ -319,7 +321,7 @@ export default {
                 firstGroupOfProjects.unshift(newProject);
               }
             }
-            this.new_project_name = "";
+            this.new_project_name = '';
             resolve();
           });
       });
@@ -331,31 +333,30 @@ export default {
     createNewTask(projectId, projectIndex, groupIndex) {
       const taskCreated = new Promise((resolve, reject) => {
         axios
-          .post("http://localhost:8080/api/tasks", {
+          .post('http://localhost:8080/api/tasks', {
             name: this.form.task_name[projectId],
             project_id: projectId,
           })
           .then((response) => {
             const data = response.data;
-            if (data.status === "error") {
+            if (data.status === 'error') {
               // TODO: Something happened flash message?
               reject();
-            } else if (data.status === "ok") {
+            } else if (data.status === 'ok') {
               const task = data.data;
 
               const newTask = {
                 name: task.Name,
                 id: task.ID,
                 edit: false,
-                description: "",
-                status: "new",
+                description: '',
+                status: 'new',
+                finishedAt: this.createDate(),
               };
-              console.log(newTask);
               const selectedProject = this.projects[groupIndex][projectIndex];
               selectedProject.tasks.unshift(newTask);
-              console.log(selectedProject.tasks);
             }
-            this.form.task_name[projectId] = "";
+            this.form.task_name[projectId] = '';
             resolve();
           });
       });
@@ -364,45 +365,50 @@ export default {
         // TODO: add flash message
       });
     },
+    createDate() {
+      const d = new Date(2010, 7, 5);
+      const ye = new Intl.DateTimeFormat('en', { year: 'numeric' }).format(d);
+      const mo = new Intl.DateTimeFormat('en', { month: 'short' }).format(d);
+      const da = new Intl.DateTimeFormat('en', { day: '2-digit' }).format(d);
+
+      return `${da}-${mo}-${ye}`;
+    },
   },
   created() {
     let projects;
     let tasks;
     const projectsDone = new Promise((resolve, reject) => {
-      axios.get("http://localhost:8080/api/projects").then((response) => {
+      axios.get('http://localhost:8080/api/projects').then((response) => {
         const data = response.data;
 
-        if (data.status === "error") {
+        if (data.status === 'error') {
           // TODO: Something happened flash message?
           reject();
-        } else if (data.status === "ok") {
+        } else if (data.status === 'ok') {
           projects = data.data;
-          console.log("projects: ", projects);
         }
 
         resolve();
       });
     });
     const tasksDone = new Promise((resolve, reject) => {
-      axios.get("http://localhost:8080/api/tasks").then((response) => {
+      axios.get('http://localhost:8080/api/tasks').then((response) => {
         const data = response.data;
 
-        if (data.status === "error") {
+        if (data.status === 'error') {
           // TODO: Something happened flash message?
           reject();
-        } else if (data.status === "ok") {
+        } else if (data.status === 'ok') {
           tasks = data.data;
-          console.log("tasks: ", tasks);
-          console.log("data.data: ", data.data);
         }
         resolve();
       });
     });
+    const vueContext = this;
     Promise.all([projectsDone, tasksDone]).then(() => {
       const aggregateRoot = [];
       const step = 3;
       let index = 0;
-      console.log(Math.ceil(projects.length / 3));
       for (let i = 0; i < Math.ceil(projects.length / 3); i += 1) {
         const projectsArray = [];
         for (let j = 0; j < 3; j += 1) {
@@ -423,6 +429,7 @@ export default {
                 description: tasks[k].Description,
                 edit: false,
                 status: tasks[k].Status,
+                finishedAt: tasks[k].finished_at,
               };
               projectWithTasks.tasks.push(task);
             }
@@ -432,7 +439,6 @@ export default {
         index += 1;
         aggregateRoot.push(projectsArray);
       }
-      console.log("aggregateRoot: ", aggregateRoot);
       this.projects = aggregateRoot;
     });
   },

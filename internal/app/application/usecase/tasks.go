@@ -93,7 +93,7 @@ func FinishTask(taskRepository repository.ITask, taskID uint) (domain.Task, erro
 		return task, TaskErrAlreadyFinished
 	}
 
-	task.FinishedAt = time.Now().Format("02 January 2006 15:04:05")
+	task.FinishedAt =  time.Now().Format("02-Jan-2006")
 	task.Status = domain.TaskStatusFinished
 
 	task = taskRepository.Save(task)
