@@ -26,10 +26,12 @@ $ go build main.go && ./main.exe -cmd fresh
 [GIN-debug] Listening and serving HTTP on :8080
 ```
 
-And now to run the frontend app, 
+And now to run the frontend app.
 ```
 $ npm install
 $ npm run dev 
 ...
 Your application is running here: http://localhost:8081
 ```
+
+You can pick up any user you want, fetch any email, login with pw `123123123` or just register a dummy user...
