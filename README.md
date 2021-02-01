@@ -12,7 +12,7 @@ Running a dabatase with docker
 docker run --name mysql -e MYSQL_DATABASE=code_challenge -e MYSQL_ROOT_PASSWORD=secret -p 3306:3306 -d mysql:8.0.22
 ```
 
-Build the executable and run -cmd migrate to migrate the database and seed it.
+Build the executable and run `-cmd migrate` to migrate the database and seed it.
 ```
 $ go build main.go && ./main.exe -cmd migrate
 ...
